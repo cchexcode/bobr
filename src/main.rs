@@ -32,10 +32,7 @@ use {
     },
     tokio::{
         process::Command,
-        task::{
-            yield_now,
-            JoinSet,
-        },
+        task::JoinSet,
     },
 };
 
