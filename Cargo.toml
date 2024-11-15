@@ -1,0 +1,35 @@
+[package]
+name = "bobr"
+version = "0.0.0"
+authors = ["Alexander Weber <aw@voidpointergroup.com>"]
+edition = "2021"
+license = "MIT"
+description = "A simple command multiplexer."
+homepage = "https://github.com/replicadse/bobr"
+repository = "https://github.com/replicadse/bobr"
+keywords = ["bobr", "cli"]
+categories = ["command-line-utilities"]
+readme = "docs/README.md"
+
+[features]
+default = []
+
+[dependencies]
+async-trait = "0.1.72"
+tokio = { version = "1.41.1", features = ["rt", "rt-multi-thread", "macros", "process"] }
+clap = "4.3.19"
+clap_complete = "4.3.2"
+clap_mangen = "0.2.12"
+clap-markdown = "0.1.3"
+serde = { version = "1.0.175", features = ["derive"] }
+serde_yaml = "0.9.25"
+bytes = "1.4.0"
+crossterm = "0.26.1"
+itertools = "0.11.0"
+anyhow = "1.0.72"
+signal-hook = "0.3.17"
+flume = "0.11.1"
+thiserror = "2.0.3"
+
+[dev-dependencies]
+hoox = "0.3.0"
