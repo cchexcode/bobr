@@ -72,10 +72,14 @@ impl ClapArgumentLoader {
                     .long("command")
                     .help("A command to be executed.")
                     .action(ArgAction::Append),
-                clap::Arg::new("file").short('f').long("file").help(
-                    "Define a commands file. The content will be split per line, which are then interpreted as \
-                     individual commands.",
-                ),
+                clap::Arg::new("file")
+                    .short('f')
+                    .long("file")
+                    .help(
+                        "Define a commands file. The content will be split per line, which are then interpreted as \
+                         individual commands.",
+                    )
+                    .action(ArgAction::Append),
             ])
             .subcommand(
                 clap::Command::new("man")
@@ -132,11 +136,13 @@ impl ClapArgumentLoader {
                 .unwrap_or_default()
                 .cloned()
                 .collect_vec();
-            if let Some(file) = command.get_one::<String>("file") {
-                let mut content = String::new();
-                std::fs::File::open(file)?.read_to_string(&mut content)?;
-                let lines = &mut content.lines().map(|v| v.to_owned()).collect::<Vec<_>>();
-                commands.append(lines);
+            if let Some(files) = command.get_many::<String>("file") {
+                for file in files {
+                    let mut content = String::new();
+                    std::fs::File::open(file)?.read_to_string(&mut content)?;
+                    let lines = &mut content.lines().map(|v| v.to_owned()).collect::<Vec<_>>();
+                    commands.append(lines);
+                }
             }
             Command::Multiplex { commands }
         };
