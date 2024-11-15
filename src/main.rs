@@ -16,7 +16,7 @@ use {
         iterator::Signals,
     },
     std::{
-        collections::HashMap,
+        collections::BTreeMap,
         io::{
             stdout,
             BufWriter,
@@ -64,13 +64,13 @@ async fn main() -> Result<()> {
             Ok(())
         },
         | crate::args::Command::Multiplex { commands } => {
-            let mut command_states = HashMap::<String, String>::new();
+            let mut command_states = BTreeMap::<String, String>::new();
             for command in commands.iter() {
                 command_states.insert(command.clone(), "PENDING".to_owned());
             }
             let command_states = Arc::new(RwLock::new(command_states));
 
-            fn draw_state(state: &HashMap<String, String>) {
+            fn draw_state(state: &BTreeMap<String, String>) {
                 let mut writer = BufWriter::new(stdout());
                 crossterm::queue!(writer, Clear(ClearType::All)).unwrap();
                 crossterm::queue!(writer, MoveTo(0, 0)).unwrap();
