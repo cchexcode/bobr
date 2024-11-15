@@ -131,8 +131,6 @@ dependencies = [
  "flume",
  "hoox",
  "itertools",
- "serde",
- "serde_yaml",
  "signal-hook",
  "thiserror",
  "tokio",

@@ -23,6 +23,10 @@ use {
             Write,
         },
         path::PathBuf,
+        sync::{
+            Arc,
+            RwLock,
+        },
         thread::sleep,
         time::Duration,
     },
@@ -67,25 +71,29 @@ async fn main() -> Result<()> {
             for command in commands.iter() {
                 command_states.insert(command.clone(), "PENDING".to_owned());
             }
+            let command_states = Arc::new(RwLock::new(command_states));
+
+            fn draw_state(state: &HashMap<String, String>) {
+                let mut writer = BufWriter::new(stdout());
+                crossterm::queue!(writer, Clear(ClearType::All)).unwrap();
+                crossterm::queue!(writer, MoveTo(0, 0)).unwrap();
+
+                writeln!(writer, "Executing commands:").unwrap();
+                for item in state.iter() {
+                    writeln!(writer, "⇒ {}", item.0).unwrap();
+                    writeln!(writer, " ↳ Status: {}", item.1).unwrap();
+                }
+                writer.flush().unwrap();
+            }
 
             let (report_tx, report_rx) = flume::unbounded::<Option<(String, String)>>();
+            let report_command_states = command_states.clone();
             let report_fut = tokio::spawn(async move {
                 for update in report_rx.iter() {
-                    yield_now().await; // make sure it's abortable
                     if let Some((cmd, state)) = update {
-                        command_states.insert(cmd, state);
+                        report_command_states.write().unwrap().insert(cmd, state);
                     }
-
-                    let mut writer = BufWriter::new(stdout());
-                    crossterm::queue!(writer, Clear(ClearType::All)).unwrap();
-                    crossterm::queue!(writer, MoveTo(0, 0)).unwrap();
-
-                    writeln!(writer, "Executing commands:").unwrap();
-                    for item in command_states.iter() {
-                        writeln!(writer, "⇒ {}", item.0).unwrap();
-                        writeln!(writer, " ↳ Status: {}", item.1).unwrap();
-                    }
-                    writer.flush().unwrap();
+                    draw_state(&report_command_states.read().unwrap());
                     sleep(Duration::from_secs(1));
                 }
             });
@@ -103,7 +111,7 @@ async fn main() -> Result<()> {
                     let mut child_proc = cmd_proc.spawn().unwrap();
                     let exit_code = child_proc.wait().await.unwrap();
                     let status = if exit_code.success() {
-                        "SUCCESS".to_owned()
+                        "SUCCESS (0)".to_owned()
                     } else {
                         format!("FAILED ({})", exit_code.code().unwrap())
                     };
@@ -126,6 +134,7 @@ async fn main() -> Result<()> {
                 _ = report_fut => {
                 },
             }
+            draw_state(&command_states.read().unwrap());
             signals_handle.close();
 
             Ok(())
