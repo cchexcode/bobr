@@ -79,6 +79,8 @@ async fn main() -> Result<()> {
                     writeln!(writer, "⇒ {}", item.0).unwrap();
                     writeln!(writer, " ↳ Status: {}", item.1).unwrap();
                 }
+                writeln!(writer, "").unwrap(); // new line
+                writeln!(writer, "Thinking...").unwrap();
                 writer.flush().unwrap();
             }
 
