@@ -27,7 +27,6 @@ use {
             Arc,
             RwLock,
         },
-        thread::sleep,
         time::Duration,
     },
     tokio::{
@@ -91,7 +90,6 @@ async fn main() -> Result<()> {
                         report_command_states.write().unwrap().insert(cmd, state);
                     }
                     draw_state(&report_command_states.read().unwrap());
-                    sleep(Duration::from_secs(1));
                 }
             });
             report_tx.send(None).unwrap(); // first draw
@@ -106,13 +104,18 @@ async fn main() -> Result<()> {
                     cmd_proc.stdout(std::process::Stdio::null());
                     cmd_proc.stderr(std::process::Stdio::null());
                     let mut child_proc = cmd_proc.spawn().unwrap();
+                    let _ = report_channel.send(Some((command.clone(), "RUNNING".to_owned())));
                     let exit_code = child_proc.wait().await.unwrap();
                     let status = if exit_code.success() {
                         "SUCCESS (0)".to_owned()
                     } else {
-                        format!("FAILED ({})", exit_code.code().unwrap())
+                        format!(
+                            "FAILED ({})",
+                            exit_code.code().map(|v| v.to_string()).unwrap_or("unknown".to_owned())
+                        )
                     };
-                    report_channel.send(Some((command.clone(), status))).unwrap();
+                    // ignore error
+                    let _ = report_channel.send(Some((command.clone(), status)));
                 });
             }
             drop(report_tx);
