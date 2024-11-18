@@ -27,7 +27,6 @@ use {
             Arc,
             RwLock,
         },
-        time::Duration,
     },
     tokio::{
         process::Command,
@@ -62,14 +61,14 @@ async fn main() -> Result<()> {
             reference::build_shell_completion(&out_path, &shell)?;
             Ok(())
         },
-        | crate::args::Command::Multiplex { commands } => {
+        | crate::args::Command::Multiplex { program, commands } => {
             let mut command_states = BTreeMap::<String, String>::new();
             for command in commands.iter() {
                 command_states.insert(command.clone(), "PENDING".to_owned());
             }
             let command_states = Arc::new(RwLock::new(command_states));
 
-            fn draw_state(state: &BTreeMap<String, String>) {
+            fn draw_state(state: &BTreeMap<String, String>, in_progress: bool) {
                 let mut writer = BufWriter::new(stdout());
                 crossterm::queue!(writer, Clear(ClearType::All)).unwrap();
                 crossterm::queue!(writer, MoveTo(0, 0)).unwrap();
@@ -79,19 +78,26 @@ async fn main() -> Result<()> {
                     writeln!(writer, "⇒ {}", item.0).unwrap();
                     writeln!(writer, " ↳ Status: {}", item.1).unwrap();
                 }
+
                 writeln!(writer, "").unwrap(); // new line
-                writeln!(writer, "Thinking...").unwrap();
+                write!(writer, "Thinking...").unwrap();
+                if !in_progress {
+                    write!(writer, " DONE").unwrap();
+                }
+                writeln!(writer, "").unwrap();
                 writer.flush().unwrap();
             }
 
             let (report_tx, report_rx) = flume::unbounded::<Option<(String, String)>>();
+
+            // reporting task
             let report_command_states = command_states.clone();
             let report_fut = tokio::spawn(async move {
                 for update in report_rx.iter() {
                     if let Some((cmd, state)) = update {
                         report_command_states.write().unwrap().insert(cmd, state);
                     }
-                    draw_state(&report_command_states.read().unwrap());
+                    draw_state(&report_command_states.read().unwrap(), true);
                 }
             });
             report_tx.send(None).unwrap(); // first draw
@@ -99,13 +105,24 @@ async fn main() -> Result<()> {
             let mut joins = JoinSet::new();
             for command in commands {
                 let report_channel = report_tx.clone();
+                // first item is shell to execute commands in (like "/bin/sh")
+                let mut cmd_proc = Command::new(&program[0]);
+                // remaining items are arguments to shell (like "-c")
+                for arg in &program[1..] {
+                    cmd_proc.arg(arg);
+                }
+                // final argument is the command itself
+                cmd_proc.arg(&command);
+
+                // No STDIN, STDOUT or STDERR are used
+                cmd_proc.stdin(std::process::Stdio::null());
+                cmd_proc.stdout(std::process::Stdio::null());
+                cmd_proc.stderr(std::process::Stdio::null());
+
+                // spawn child process as member of JoinSet
                 joins.spawn(async move {
-                    let mut cmd_proc = Command::new("sh");
-                    cmd_proc.args(&["-c", &command]);
-                    cmd_proc.stdin(std::process::Stdio::null());
-                    cmd_proc.stdout(std::process::Stdio::null());
-                    cmd_proc.stderr(std::process::Stdio::null());
                     let mut child_proc = cmd_proc.spawn().unwrap();
+                    // ignore error
                     let _ = report_channel.send(Some((command.clone(), "RUNNING".to_owned())));
                     let exit_code = child_proc.wait().await.unwrap();
                     let status = if exit_code.success() {
@@ -124,19 +141,17 @@ async fn main() -> Result<()> {
 
             let mut signals = Signals::new([SIGINT, SIGTERM]).unwrap();
             let signals_handle = signals.handle();
+
+            // task handling abort signals
             let abort_fut = tokio::spawn(async move { signals.wait() });
+            // task handling command execution
             let command_fut = tokio::spawn(async move { while let Some(_) = joins.join_next().await {} });
             tokio::select! {
-                _ = abort_fut => {
-                    println!("signal received... aborting...");
-                },
-                _ = command_fut => {
-                    println!("completed all tasks... shutting down...")
-                },
-                _ = report_fut => {
-                },
+                _ = abort_fut => {}, // abort signal was received
+                _ = command_fut => {}, // all tasks were executed
+                _ = report_fut => {}, // reporting task failed
             }
-            draw_state(&command_states.read().unwrap());
+            draw_state(&command_states.read().unwrap(), false);
             signals_handle.close();
 
             Ok(())

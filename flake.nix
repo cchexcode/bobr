@@ -29,6 +29,7 @@
             # rust
             rust-bin.stable."${versions.rust}".default  
             rust-bin.nightly.latest.default
+            rust-analyzer
             # tools
             helix
             gitui

@@ -45,10 +45,19 @@ pub(crate) enum ManualFormat {
 
 #[derive(Debug)]
 pub(crate) enum Command {
-    Manual { path: String, format: ManualFormat },
-    Autocomplete { path: String, shell: clap_complete::Shell },
+    Manual {
+        path: String,
+        format: ManualFormat,
+    },
+    Autocomplete {
+        path: String,
+        shell: clap_complete::Shell,
+    },
 
-    Multiplex { commands: Vec<String> },
+    Multiplex {
+        program: Vec<String>,
+        commands: Vec<String>,
+    },
 }
 
 pub(crate) struct ClapArgumentLoader {}
@@ -67,6 +76,11 @@ impl ClapArgumentLoader {
                     .long("experimental")
                     .help("Enables experimental features.")
                     .num_args(0),
+                clap::Arg::new("program")
+                    .short('p')
+                    .long("program")
+                    .help("Defines the program used to execute the commands given.")
+                    .default_value("/bin/sh -c"),
                 clap::Arg::new("command")
                     .short('c')
                     .long("command")
@@ -144,7 +158,14 @@ impl ClapArgumentLoader {
                     commands.append(lines);
                 }
             }
-            Command::Multiplex { commands }
+            let program = command
+                .get_one::<String>("program")
+                .unwrap()
+                .split_whitespace()
+                .into_iter()
+                .map(|v| v.to_owned())
+                .collect::<Vec<_>>();
+            Command::Multiplex { program, commands }
         };
 
         let callargs = CallArgs {
