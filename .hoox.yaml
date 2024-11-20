@@ -1,11 +1,13 @@
 version: "0.3.0"
 
-.cargo_all: &cargo_all !inline |-
+.cargo_all: !inline &cargo_all |-
   set -e
+
   cargo build --all-features
-  # cargo +nightly fmt --all -- --check
+  cargo build --release --all-features
+  cargo doc --no-deps --document-private-items --workspace
   cargo test --all
-  cargo doc --no-deps
+  # cargo +nightly fmt --all -- --check
 
 hooks:
   "pre-commit": # pre-commit hook

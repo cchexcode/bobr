@@ -1,15 +1,8 @@
-use {
-    anyhow::{
-        anyhow,
-        Result,
-    },
-    clap::ArgAction,
-    itertools::Itertools,
-    std::{
-        io::Read,
-        str::FromStr,
-    },
-};
+use std::{io::Read, str::FromStr};
+
+use anyhow::{anyhow, Result};
+use clap::ArgAction;
+use itertools::Itertools;
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Privilege {

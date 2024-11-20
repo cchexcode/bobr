@@ -1,14 +1,10 @@
-use {
-    crate::args::ClapArgumentLoader,
-    anyhow::Result,
-    clap_complete::Shell,
-    clap_mangen::Man,
-    std::{
-        fs::File,
-        io::Write,
-        path::Path,
-    },
-};
+use std::{fs::File, io::Write, path::Path};
+
+use anyhow::Result;
+use clap_complete::Shell;
+use clap_mangen::Man;
+
+use crate::args::ClapArgumentLoader;
 
 fn collect_commands() -> Vec<(String, clap::Command)> {
     let mut cmds: Vec<(String, clap::Command)> = Vec::new();
