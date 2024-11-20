@@ -1,7 +1,7 @@
 [
   {
     "label": "Build (all features)",
-    "command": "cargo build --all-features",
+    "command": "nix develop --command sh -c 'cargo build --all-features'",
     "use_new_terminal": false,
     "allow_concurrent_runs": false,
     "reveal": "always",
@@ -10,7 +10,7 @@
   },
   {
     "label": "Build (release)",
-    "command": "cargo build --release",
+    "command": "nix develop --command sh -c 'cargo build --release'",
     "use_new_terminal": false,
     "allow_concurrent_runs": false,
     "reveal": "always",
@@ -19,7 +19,7 @@
   },
   {
     "label": "Run test file",
-    "command": "cargo run -- -f ./test/example.sh",
+    "command": "nix develop --command sh -c 'cargo run -- -f ./test/example.sh'",
     "use_new_terminal": false,
     "allow_concurrent_runs": false,
     "reveal": "always",

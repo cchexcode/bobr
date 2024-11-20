@@ -131,6 +131,7 @@ dependencies = [
  "flume",
  "hoox",
  "itertools",
+ "parking_lot",
  "signal-hook",
  "thiserror",
  "tokio",

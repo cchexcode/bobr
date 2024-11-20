@@ -8,6 +8,7 @@ use {
             ClearType,
         },
     },
+    parking_lot::RwLock,
     signal_hook::{
         consts::{
             SIGINT,
@@ -23,10 +24,7 @@ use {
             Write,
         },
         path::PathBuf,
-        sync::{
-            Arc,
-            RwLock,
-        },
+        sync::Arc,
     },
     tokio::{
         process::Command,
@@ -95,9 +93,9 @@ async fn main() -> Result<()> {
             let report_fut = tokio::spawn(async move {
                 for update in report_rx.iter() {
                     if let Some((cmd, state)) = update {
-                        report_command_states.write().unwrap().insert(cmd, state);
+                        report_command_states.write().insert(cmd, state);
                     }
-                    draw_state(&report_command_states.read().unwrap(), true);
+                    draw_state(&report_command_states.read(), true);
                 }
             });
             report_tx.send(None).unwrap(); // first draw
@@ -151,7 +149,7 @@ async fn main() -> Result<()> {
                 _ = command_fut => {}, // all tasks were executed
                 _ = report_fut => {}, // reporting task failed
             }
-            draw_state(&command_states.read().unwrap(), false);
+            draw_state(&command_states.read(), false);
             signals_handle.close();
 
             Ok(())

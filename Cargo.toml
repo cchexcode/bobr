@@ -16,7 +16,13 @@ default = []
 
 [dependencies]
 async-trait = "0.1.72"
-tokio = { version = "1.41.1", features = ["rt", "rt-multi-thread", "macros", "process", "time"] }
+tokio = { version = "1.41.1", features = [
+    "rt",
+    "rt-multi-thread",
+    "macros",
+    "process",
+    "time",
+] }
 clap = "4.3.19"
 clap_complete = "4.3.2"
 clap_mangen = "0.2.12"
@@ -28,6 +34,7 @@ anyhow = "1.0.72"
 signal-hook = "0.3.17"
 flume = "0.11.1"
 thiserror = "2.0.3"
+parking_lot = "0.12.3"
 
 [dev-dependencies]
 hoox = "0.3.0"
