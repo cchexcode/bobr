@@ -10,7 +10,7 @@ use crossterm::{
     terminal::{Clear, ClearType},
 };
 use flume::Receiver;
-use parking_lot::{RwLock, RwLockReadGuard};
+use parking_lot::RwLock;
 use signal_hook::{
     consts::{SIGINT, SIGTERM},
     iterator::Signals,
@@ -106,6 +106,7 @@ impl Multiplexer {
                 });
             });
         }
+        drop(task_event_tx);
 
         let mut signals = Signals::new([SIGINT, SIGTERM]).unwrap();
         let signals_handle = signals.handle();
@@ -120,7 +121,6 @@ impl Multiplexer {
             _ = event_handler_fut => {}, // reporting task failed
         }
         signals_handle.close();
-        drop(task_event_tx);
 
         Ok(())
     }
@@ -144,11 +144,11 @@ impl TaskEventHandler {
                     self.tasks.write().get_mut(&id).unwrap().status = status;
                 },
             }
-            Self::draw(self.tasks.read(), remaining == 0);
+            Self::draw(&self.tasks.read(), remaining == 0);
         }
     }
 
-    fn draw(tasks: RwLockReadGuard<BTreeMap<usize, Task>>, completed: bool) {
+    fn draw(tasks: &BTreeMap<usize, Task>, completed: bool) {
         let mut writer = BufWriter::new(stdout());
         crossterm::queue!(writer, Clear(ClearType::All)).unwrap();
         crossterm::queue!(writer, MoveTo(0, 0)).unwrap();
