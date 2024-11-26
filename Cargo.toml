@@ -24,7 +24,7 @@ tokio = { version = "1.41.1", features = [
     "io-util",
     "time",
 ] }
-clap = "4.3.19"
+clap = "4.5.21"
 clap_complete = "4.3.2"
 clap_mangen = "0.2.12"
 clap-markdown = "0.1.3"
