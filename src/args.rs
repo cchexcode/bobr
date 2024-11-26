@@ -61,7 +61,7 @@ impl ClapArgumentLoader {
         clap::Command::new("bobr")
             .version(env!("CARGO_PKG_VERSION"))
             .about("A command multiplexer.")
-            .author("replicadse <aw@voidpointergroup.com>")
+            .author("Alexander Weber (cchexcode) <alexanderh.weber@outlook.com>")
             .propagate_version(true)
             .subcommand_required(false)
             .args([

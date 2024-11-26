@@ -1,12 +1,12 @@
 [package]
 name = "bobr"
 version = "0.0.0"
-authors = ["Alexander Weber <aw@voidpointergroup.com>"]
+authors = ["Alexander Weber (cchexcode) <alexanderh.weber@outlook.com>"]
 edition = "2021"
 license = "MIT"
 description = "A simple command multiplexer."
-homepage = "https://github.com/replicadse/bobr"
-repository = "https://github.com/replicadse/bobr"
+homepage = "https://github.com/cchexcode/bobr"
+repository = "https://github.com/cchexcode/bobr"
 keywords = ["bobr", "cli"]
 categories = ["command-line-utilities"]
 readme = "docs/README.md"
