@@ -1,6 +1,10 @@
 # bobr
 
+![](bobr.png)
+
 `bobr` is a simple command multiplexer.
+
+![](bobr-preview.png)
 
 ## How to use
 
