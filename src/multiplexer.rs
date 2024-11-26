@@ -87,7 +87,7 @@ impl Multiplexer {
             cmd_proc.arg(&command.1.command);
 
             cmd_proc.stdin(std::process::Stdio::null());
-            cmd_proc.stdout(std::process::Stdio::piped());
+            cmd_proc.stdout(std::process::Stdio::null());
             cmd_proc.stderr(std::process::Stdio::piped());
 
             // spawn child process as member of JoinSet
