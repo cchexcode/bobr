@@ -32,8 +32,12 @@ async fn main() -> Result<()> {
             reference::build_shell_completion(&out_path, &shell)?;
             Ok(())
         },
-        | crate::args::Command::Multiplex { program, commands } => {
-            Multiplexer::new(program, commands).run().await?;
+        | crate::args::Command::Multiplex {
+            program,
+            stderr,
+            commands,
+        } => {
+            Multiplexer::new(program, stderr, commands).run().await?;
             Ok(())
         },
     }

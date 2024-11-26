@@ -49,6 +49,7 @@ pub(crate) enum Command {
 
     Multiplex {
         program: Vec<String>,
+        stderr: usize,
         commands: Vec<String>,
     },
 }
@@ -74,6 +75,10 @@ impl ClapArgumentLoader {
                     .long("program")
                     .help("Defines the program used to execute the commands given.")
                     .default_value("/bin/sh -c"),
+                clap::Arg::new("stderr")
+                    .long("stderr")
+                    .help("Defines the length of stderr to display.")
+                    .default_value("3"),
                 clap::Arg::new("command")
                     .short('c')
                     .long("command")
@@ -158,7 +163,11 @@ impl ClapArgumentLoader {
                 .into_iter()
                 .map(|v| v.to_owned())
                 .collect::<Vec<_>>();
-            Command::Multiplex { program, commands }
+            Command::Multiplex {
+                program,
+                stderr: command.get_one::<String>("stderr").unwrap().parse::<usize>()?,
+                commands,
+            }
         };
 
         let callargs = CallArgs {
