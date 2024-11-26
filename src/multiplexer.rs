@@ -48,11 +48,14 @@ impl Multiplexer {
     pub fn new(program: Vec<String>, stderr: usize, tasks: Vec<String>) -> Self {
         let task_map = Arc::new(RwLock::new(BTreeMap::<usize, Task>::new()));
         for i in 0..tasks.len() {
-            task_map.write().insert(i, Task {
-                command: tasks[i].clone(),
-                status: TaskStatus::Pending,
-                stderr: VecDeque::<_>::new(),
-            });
+            task_map.write().insert(
+                i,
+                Task {
+                    command: tasks[i].clone(),
+                    status: TaskStatus::Pending,
+                    stderr: VecDeque::<_>::new(),
+                },
+            );
         }
 
         Self {
@@ -198,7 +201,6 @@ impl TaskEventHandler {
                     writeln!(writer, "   |> {}", line).unwrap();
                 }
             }
-            writeln!(writer, "").unwrap();
         }
 
         writeln!(writer, "").unwrap(); // new line

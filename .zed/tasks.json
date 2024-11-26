@@ -1,7 +1,7 @@
 [
   {
     "label": "Run cargo file",
-    "command": "nix develop --command sh -c 'cargo run -- --stderr=3 -f=./test/cargo.sh'",
+    "command": "nix develop --command sh -c 'cargo run -- --stderr=0 -f=./test/cargo.sh'",
     "use_new_terminal": false,
     "allow_concurrent_runs": false,
     "reveal": "always",
