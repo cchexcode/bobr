@@ -1,13 +1,14 @@
 use std::{
     collections::{BTreeMap, VecDeque},
-    io::{stdout, BufWriter, Write},
+    io::{stderr, BufWriter, Write},
     sync::Arc,
 };
 
 use anyhow::Result;
 use crossterm::{
     cursor::MoveTo,
-    terminal::{Clear, ClearType},
+    style::{Print, Stylize},
+    terminal::{Clear, ClearType, EnterAlternateScreen, LeaveAlternateScreen},
 };
 use flume::Receiver;
 use parking_lot::RwLock;
@@ -22,10 +23,16 @@ use tokio::{
 };
 
 #[derive(Debug, Eq, PartialEq)]
+enum TaskStatusCompleted {
+    Success,
+    Failed(Option<i32>),
+}
+
+#[derive(Debug, Eq, PartialEq)]
 enum TaskStatus {
     Pending,
     Running,
-    Completed(String),
+    Completed(TaskStatusCompleted),
 }
 enum TaskEvent {
     Update { id: usize, status: TaskStatus },
@@ -111,12 +118,9 @@ impl Multiplexer {
 
                 let exit_code = child_proc.wait().await.unwrap();
                 let status = if exit_code.success() {
-                    "SUCCESS (0)".to_owned()
+                    TaskStatusCompleted::Success
                 } else {
-                    format!(
-                        "FAILED ({})",
-                        exit_code.code().map(|v| v.to_string()).unwrap_or("unknown".to_owned())
-                    )
+                    TaskStatusCompleted::Failed(exit_code.code())
                 };
                 // ignore error
                 let _ = report_channel.send(TaskEvent::Update {
@@ -154,6 +158,7 @@ struct TaskEventHandler {
 impl TaskEventHandler {
     pub async fn run(self) {
         let mut remaining = self.tasks.read().len();
+        crossterm::execute!(std::io::stderr(), EnterAlternateScreen).unwrap();
         for event in self.rx {
             match event {
                 | TaskEvent::Update { id, status } => {
@@ -172,25 +177,44 @@ impl TaskEventHandler {
                     }
                 },
             }
+
+            // last should be printed to stderr, therefore exit alternate screen before last
+            // draw
+            if remaining == 0 {
+                crossterm::execute!(std::io::stderr(), LeaveAlternateScreen).unwrap();
+            }
             Self::draw(&self.tasks.read(), remaining == 0);
         }
     }
 
     fn draw(tasks: &BTreeMap<usize, Task>, completed: bool) {
-        let mut writer = BufWriter::new(stdout());
-        crossterm::queue!(writer, Clear(ClearType::All)).unwrap();
-        crossterm::queue!(writer, Clear(ClearType::Purge)).unwrap();
-        crossterm::queue!(writer, MoveTo(0, 0)).unwrap();
+        let mut writer = BufWriter::new(stderr());
+        if !completed {
+            crossterm::queue!(writer, Clear(ClearType::All)).unwrap();
+            crossterm::queue!(writer, MoveTo(0, 0)).unwrap();
+        }
 
-        writeln!(writer, "Executing commands:").unwrap();
         for item in tasks.iter() {
             writeln!(writer, "⇒ ({}) {}", item.0, item.1.command).unwrap();
             let status = match &item.1.status {
-                | TaskStatus::Pending => "PENDING",
-                | TaskStatus::Running => "RUNNING",
-                | TaskStatus::Completed(v) => v,
+                | TaskStatus::Pending => "PENDING".to_owned().yellow(),
+                | TaskStatus::Running => "RUNNING".to_owned().yellow(),
+                | TaskStatus::Completed(v) => {
+                    match v {
+                        | TaskStatusCompleted::Success => "SUCCESS (0)".to_owned().green(),
+                        | TaskStatusCompleted::Failed(code) => {
+                            format!(
+                                "FAILED ({})",
+                                code.map(|v| v.to_string()).unwrap_or("unknown".to_owned())
+                            )
+                            .red()
+                        },
+                    }
+                },
             };
-            writeln!(writer, " ↳ Status: {}", status).unwrap();
+            write!(writer, " ↳ Status: ").unwrap();
+            crossterm::queue!(writer, Print(status)).unwrap();
+            writeln!(writer, "").unwrap();
 
             if item.1.stderr.len() > 0 {
                 writeln!(writer, " ↳ Stderr:").unwrap();
