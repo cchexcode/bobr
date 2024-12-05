@@ -74,26 +74,29 @@ pub struct Multiplexer {
     program: Vec<String>,
     stderr: usize,
     stdout: Option<StdoutFormat>,
-    tasks: Arc<RwLock<BTreeMap<usize, Task>>>,
+    tasks: Arc<BTreeMap<usize, Arc<RwLock<Task>>>>,
 }
 
 impl Multiplexer {
     pub fn new(program: Vec<String>, stderr: usize, stdout: Option<StdoutFormat>, tasks: Vec<String>) -> Self {
-        let task_map = Arc::new(RwLock::new(BTreeMap::<usize, Task>::new()));
+        let mut task_map = BTreeMap::<usize, Arc<RwLock<Task>>>::new();
         for i in 0..tasks.len() {
-            task_map.write().insert(i, Task {
-                command: tasks[i].clone(),
-                status: TaskStatus::Pending,
-                stderr: VecDeque::<_>::new(),
-                stdout: String::new(),
-            });
+            task_map.insert(
+                i,
+                Arc::new(RwLock::new(Task {
+                    command: tasks[i].clone(),
+                    status: TaskStatus::Pending,
+                    stderr: VecDeque::<_>::new(),
+                    stdout: String::new(),
+                })),
+            );
         }
 
         Self {
             program,
             stderr,
             stdout,
-            tasks: task_map,
+            tasks: Arc::new(task_map),
         }
     }
 
@@ -111,7 +114,7 @@ impl Multiplexer {
         });
 
         let mut joins = JoinSet::new();
-        for command in self.tasks.read().iter() {
+        for command in self.tasks.iter() {
             let report_channel = task_event_tx.clone();
             // first item is shell to execute commands in (like "/bin/sh")
             let mut cmd_proc = Command::new(&self.program[0]);
@@ -120,7 +123,7 @@ impl Multiplexer {
                 cmd_proc.arg(arg);
             }
             // final argument is the command itself
-            cmd_proc.arg(&command.1.command);
+            cmd_proc.arg(&command.1.read().command);
 
             cmd_proc.stdin(std::process::Stdio::null());
             cmd_proc.stdout(std::process::Stdio::piped());
@@ -195,10 +198,10 @@ impl Multiplexer {
                 },
                 tasks: BTreeMap::<_, _>::new(),
             };
-            for t in self.tasks.read().iter() {
+            for t in self.tasks.iter() {
                 // TODO: optimize to not clone stdout -> optimize locking behavior
                 data.tasks.insert(t.0.clone(), StdoutDataTask {
-                    stdout: t.1.stdout.clone(),
+                    stdout: t.1.read().stdout.clone(),
                 });
             }
 
@@ -216,12 +219,12 @@ impl Multiplexer {
 struct TaskEventHandler {
     rx: Receiver<TaskEvent>,
     stderr: usize,
-    tasks: Arc<RwLock<BTreeMap<usize, Task>>>,
+    tasks: Arc<BTreeMap<usize, Arc<RwLock<Task>>>>,
 }
 
 impl TaskEventHandler {
     pub async fn run(self) {
-        let mut remaining = self.tasks.read().len();
+        let mut remaining = self.tasks.len();
         crossterm::execute!(std::io::stderr(), EnterAlternateScreen).unwrap();
         for event in self.rx {
             match event {
@@ -230,19 +233,17 @@ impl TaskEventHandler {
                         | TaskStatus::Completed(_) => remaining -= 1,
                         | _ => {},
                     }
-                    self.tasks.write().get_mut(&id).unwrap().status = status;
+                    self.tasks.get(&id).unwrap().write().status = status;
                 },
                 | TaskEvent::Stderr { id, line } => {
-                    let mut lock = self.tasks.write();
-                    let stderr = &mut lock.get_mut(&id).unwrap().stderr;
+                    let stderr = &mut self.tasks.get(&id).unwrap().write().stderr;
                     stderr.push_back(line);
                     if stderr.len() > self.stderr {
                         stderr.pop_front();
                     }
                 },
                 | TaskEvent::Stdout { id, content } => {
-                    let mut lock = self.tasks.write();
-                    let task = &mut lock.get_mut(&id).unwrap();
+                    let task = &mut self.tasks.get(&id).unwrap().write();
                     task.stdout = content;
                 },
             }
@@ -252,11 +253,11 @@ impl TaskEventHandler {
             if remaining == 0 {
                 crossterm::execute!(std::io::stderr(), LeaveAlternateScreen).unwrap();
             }
-            Self::draw(&self.tasks.read(), remaining == 0);
+            Self::draw(&self.tasks, remaining == 0);
         }
     }
 
-    fn draw(tasks: &BTreeMap<usize, Task>, completed: bool) {
+    fn draw(tasks: &BTreeMap<usize, Arc<RwLock<Task>>>, completed: bool) {
         let mut writer = BufWriter::new(stderr());
         if !completed {
             crossterm::queue!(writer, Clear(ClearType::All)).unwrap();
@@ -264,8 +265,9 @@ impl TaskEventHandler {
         }
 
         for item in tasks.iter() {
-            writeln!(writer, "⇒ ({}) {}", item.0, item.1.command).unwrap();
-            let status = match &item.1.status {
+            let task = item.1.read();
+            writeln!(writer, "⇒ ({}) {}", item.0, task.command).unwrap();
+            let status = match &task.status {
                 | TaskStatus::Pending => "PENDING".to_owned().yellow(),
                 | TaskStatus::Running => "RUNNING".to_owned().yellow(),
                 | TaskStatus::Completed(v) => {
@@ -285,9 +287,9 @@ impl TaskEventHandler {
             crossterm::queue!(writer, Print(status)).unwrap();
             writeln!(writer, "").unwrap();
 
-            if item.1.stderr.len() > 0 {
+            if task.stderr.len() > 0 {
                 writeln!(writer, " ↳ Stderr:").unwrap();
-                for line in &item.1.stderr {
+                for line in &task.stderr {
                     writeln!(writer, "   |> {}", line).unwrap();
                 }
             }
