@@ -37,6 +37,11 @@ pub(crate) enum ManualFormat {
 }
 
 #[derive(Debug)]
+pub enum StdoutFormat {
+    Json,
+}
+
+#[derive(Debug)]
 pub(crate) enum Command {
     Manual {
         path: String,
@@ -49,6 +54,7 @@ pub(crate) enum Command {
 
     Multiplex {
         program: Vec<String>,
+        stdout: Option<StdoutFormat>,
         stderr: usize,
         commands: Vec<String>,
     },
@@ -79,6 +85,13 @@ impl ClapArgumentLoader {
                     .long("stderr")
                     .help("Defines the length of stderr to display.")
                     .default_value("3"),
+                clap::Arg::new("stdout")
+                    .long("stdout")
+                    .help(
+                        "Marks whether the stdout of the processes are captured and returned in a structured format \
+                         to stdout.",
+                    )
+                    .value_parser(["json"]),
                 clap::Arg::new("command")
                     .short('c')
                     .long("command")
@@ -166,6 +179,15 @@ impl ClapArgumentLoader {
             Command::Multiplex {
                 program,
                 stderr: command.get_one::<String>("stderr").unwrap().parse::<usize>()?,
+                stdout: match command.get_one::<String>("stdout") {
+                    | Some(v) => {
+                        match v.as_ref() {
+                            | "json" => Ok(Some(StdoutFormat::Json)),
+                            | _ => Err(anyhow!("unknown stdout format")),
+                        }
+                    },
+                    | None => Ok(None),
+                }?,
                 commands,
             }
         };

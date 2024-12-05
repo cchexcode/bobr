@@ -5,6 +5,7 @@ use std::{
 };
 
 use anyhow::Result;
+use chrono::{DateTime, Utc};
 use crossterm::{
     cursor::MoveTo,
     style::{Print, Stylize},
@@ -17,10 +18,12 @@ use signal_hook::{
     iterator::Signals,
 };
 use tokio::{
-    io::{AsyncBufReadExt, BufReader},
+    io::{AsyncBufReadExt, AsyncReadExt, BufReader},
     process::Command,
     task::JoinSet,
 };
+
+use crate::args::StdoutFormat;
 
 #[derive(Debug, Eq, PartialEq)]
 enum TaskStatusCompleted {
@@ -37,39 +40,65 @@ enum TaskStatus {
 enum TaskEvent {
     Update { id: usize, status: TaskStatus },
     Stderr { id: usize, line: String },
+    Stdout { id: usize, content: String },
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+struct StdoutData {
+    metadata: StdoutDataMetadata,
+    tasks: BTreeMap<usize, StdoutDataTask>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+struct StdoutDataMetadata {
+    started: DateTime<Utc>,
+    ended: DateTime<Utc>,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "snake_case")]
+struct StdoutDataTask {
+    stdout: String,
 }
 
 pub struct Task {
     command: String,
     status: TaskStatus,
     stderr: VecDeque<String>,
+    stdout: String,
 }
 
 pub struct Multiplexer {
     program: Vec<String>,
     stderr: usize,
+    stdout: Option<StdoutFormat>,
     tasks: Arc<RwLock<BTreeMap<usize, Task>>>,
 }
 
 impl Multiplexer {
-    pub fn new(program: Vec<String>, stderr: usize, tasks: Vec<String>) -> Self {
+    pub fn new(program: Vec<String>, stderr: usize, stdout: Option<StdoutFormat>, tasks: Vec<String>) -> Self {
         let task_map = Arc::new(RwLock::new(BTreeMap::<usize, Task>::new()));
         for i in 0..tasks.len() {
             task_map.write().insert(i, Task {
                 command: tasks[i].clone(),
                 status: TaskStatus::Pending,
                 stderr: VecDeque::<_>::new(),
+                stdout: String::new(),
             });
         }
 
         Self {
             program,
             stderr,
+            stdout,
             tasks: task_map,
         }
     }
 
     pub async fn run(self) -> Result<()> {
+        let time_start = Utc::now();
         let (task_event_tx, task_event_rx) = flume::unbounded::<TaskEvent>();
 
         let event_handler = TaskEventHandler {
@@ -94,7 +123,7 @@ impl Multiplexer {
             cmd_proc.arg(&command.1.command);
 
             cmd_proc.stdin(std::process::Stdio::null());
-            cmd_proc.stdout(std::process::Stdio::null());
+            cmd_proc.stdout(std::process::Stdio::piped());
             cmd_proc.stderr(std::process::Stdio::piped());
 
             // spawn child process as member of JoinSet
@@ -115,6 +144,15 @@ impl Multiplexer {
                         line,
                     });
                 }
+
+                let stdout = child_proc.stdout.take().unwrap();
+                let mut stdout_out = String::new();
+                let mut stdout_reader = BufReader::new(stdout);
+                stdout_reader.read_to_string(&mut stdout_out).await.unwrap();
+                let _ = report_channel.send(TaskEvent::Stdout {
+                    id: task_id.clone(),
+                    content: stdout_out,
+                });
 
                 let exit_code = child_proc.wait().await.unwrap();
                 let status = if exit_code.success() {
@@ -138,12 +176,38 @@ impl Multiplexer {
         let abort_fut = tokio::spawn(async move { signals.wait() });
         // task handling command execution
         let command_fut = tokio::spawn(async move { while let Some(_) = joins.join_next().await {} });
+        let mut aborted = false;
         tokio::select! {
-            _ = abort_fut => {}, // abort signal was received
+            _ = abort_fut => {
+                aborted = true;
+            }, // abort signal was received
             _ = command_fut => {}, // all tasks were executed
             _ = event_handler_fut => {}, // reporting task failed
         }
         signals_handle.close();
+        let time_end = Utc::now();
+
+        if !aborted && self.stdout.is_some() {
+            let mut data = StdoutData {
+                metadata: StdoutDataMetadata {
+                    started: time_start,
+                    ended: time_end,
+                },
+                tasks: BTreeMap::<_, _>::new(),
+            };
+            for t in self.tasks.read().iter() {
+                // TODO: optimize to not clone stdout -> optimize locking behavior
+                data.tasks.insert(t.0.clone(), StdoutDataTask {
+                    stdout: t.1.stdout.clone(),
+                });
+            }
+
+            match self.stdout.unwrap() {
+                | StdoutFormat::Json => {
+                    println!("{}", serde_json::to_string(&data)?);
+                },
+            }
+        }
 
         Ok(())
     }
@@ -175,6 +239,11 @@ impl TaskEventHandler {
                     if stderr.len() > self.stderr {
                         stderr.pop_front();
                     }
+                },
+                | TaskEvent::Stdout { id, content } => {
+                    let mut lock = self.tasks.write();
+                    let task = &mut lock.get_mut(&id).unwrap();
+                    task.stdout = content;
                 },
             }
 

@@ -35,9 +35,10 @@ async fn main() -> Result<()> {
         | crate::args::Command::Multiplex {
             program,
             stderr,
+            stdout,
             commands,
         } => {
-            Multiplexer::new(program, stderr, commands).run().await?;
+            Multiplexer::new(program, stderr, stdout, commands).run().await?;
             Ok(())
         },
     }
