@@ -23,8 +23,14 @@ impl CallArgs {
         }
 
         match &self.command {
-            | _ => (),
-        }
+            | Command::Multiplex { stdout, .. } => {
+                match stdout {
+                    | Some(..) => Err(anyhow!("using stdout is experimental")),
+                    | None => Ok(()),
+                }
+            },
+            | _ => Ok(()),
+        }?;
 
         Ok(())
     }
