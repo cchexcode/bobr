@@ -16,7 +16,7 @@ default = []
 
 [dependencies]
 async-trait = "0.1.83"
-tokio = { version = "1.41.1", features = [
+tokio = { version = "1.42.0", features = [
     "rt",
     "rt-multi-thread",
     "macros",
@@ -24,17 +24,17 @@ tokio = { version = "1.41.1", features = [
     "io-util",
     "time",
 ] }
-clap = "4.5.21"
+clap = "4.5.23"
 clap_complete = "4.5.38"
 clap_mangen = "0.2.24"
 clap-markdown = "0.1.4"
 bytes = "1.9.0"
 crossterm = "0.28.1"
 itertools = "0.13.0"
-anyhow = "1.0.93"
+anyhow = "1.0.94"
 signal-hook = "0.3.17"
 flume = "0.11.1"
-thiserror = "2.0.3"
+thiserror = "2.0.4"
 parking_lot = "0.12.3"
 serde = { version = "1.0.215", features = ["derive"] }
 serde_json = "1.0.133"
