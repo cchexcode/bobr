@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::Result;
-use args::ManualFormat;
+use args::{ManualFormat, StdoutFormat};
 use multiplexer::Multiplexer;
 
 pub mod args;
@@ -38,7 +38,14 @@ async fn main() -> Result<()> {
             stdout,
             commands,
         } => {
-            Multiplexer::new(program, stderr, stdout, commands).run().await?;
+            let result = Multiplexer::new(program, stderr, commands).run().await?;
+            if let Some(v) = stdout {
+                match v {
+                    | StdoutFormat::Json => {
+                        serde_json::to_writer(std::io::stdout(), &result)?;
+                    },
+                }
+            }
             Ok(())
         },
     }
@@ -50,7 +57,7 @@ mod test {
     use chrono::Duration;
     use clitest::CliTestSetup;
 
-    use crate::multiplexer::StdoutData;
+    use crate::multiplexer::MultiplexerResult;
 
     fn setup_test() -> CliTestSetup {
         let mut setup = CliTestSetup::new();
@@ -68,7 +75,7 @@ mod test {
         assert!(result.status.success());
 
         // smoke test parse stdout data
-        let result_typed = serde_json::from_slice::<StdoutData>(&result.stdout)?;
+        let result_typed = serde_json::from_slice::<MultiplexerResult>(&result.stdout)?;
 
         // assert commands are run in parallel and reasonably fast
         let runtime = result_typed.metadata.ended - result_typed.metadata.started;
