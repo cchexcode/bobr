@@ -1,3 +1,3 @@
-sleep 5 && exit 1
-sleep 6
+sleep 1 && exit 1
+sleep 1
 echo "test"

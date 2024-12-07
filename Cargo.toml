@@ -42,3 +42,4 @@ chrono = { version = "0.4.38", features = ["serde"] }
 
 [dev-dependencies]
 hoox = "0.3.0"
+clitest = { git = "https://github.com/cchexcode/clitest_rs", branch = "master" }

@@ -43,24 +43,24 @@ enum TaskEvent {
     Stdout { id: usize, content: String },
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
-struct StdoutData {
-    metadata: StdoutDataMetadata,
-    tasks: BTreeMap<usize, StdoutDataTask>,
+pub(crate) struct StdoutData {
+    pub metadata: StdoutDataMetadata,
+    pub tasks: BTreeMap<usize, StdoutDataTask>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
-struct StdoutDataMetadata {
-    started: DateTime<Utc>,
-    ended: DateTime<Utc>,
+pub(crate) struct StdoutDataMetadata {
+    pub started: DateTime<Utc>,
+    pub ended: DateTime<Utc>,
 }
 
-#[derive(serde::Serialize)]
+#[derive(serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
-struct StdoutDataTask {
-    stdout: String,
+pub(crate) struct StdoutDataTask {
+    pub stdout: String,
 }
 
 pub struct Task {
