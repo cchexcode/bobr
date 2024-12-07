@@ -41,8 +41,13 @@ async fn main() -> Result<()> {
             let result = Multiplexer::new(program, stderr, commands).run().await?;
             if let Some(v) = stdout {
                 match v {
+                    #[cfg(feature = "format+json")]
                     | StdoutFormat::Json => {
                         serde_json::to_writer(std::io::stdout(), &result)?;
+                    },
+                    #[cfg(feature = "format+yaml")]
+                    | StdoutFormat::Yaml => {
+                        serde_yml::to_writer(std::io::stdout(), &result)?;
                     },
                 }
             }

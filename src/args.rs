@@ -44,7 +44,21 @@ pub(crate) enum ManualFormat {
 
 #[derive(Debug)]
 pub enum StdoutFormat {
+    #[cfg(feature = "format+json")]
     Json,
+    #[cfg(feature = "format+yaml")]
+    Yaml,
+}
+
+impl StdoutFormat {
+    pub fn args() -> Vec<&'static str> {
+        let mut args = Vec::<_>::new();
+        #[cfg(feature = "format+json")]
+        args.push("json");
+        #[cfg(feature = "format+yaml")]
+        args.push("yaml");
+        args
+    }
 }
 
 #[derive(Debug)]
@@ -97,7 +111,7 @@ impl ClapArgumentLoader {
                         "Marks whether the stdout of the processes are captured and returned in a structured format \
                          to stdout.",
                     )
-                    .value_parser(["json"]),
+                    .value_parser(StdoutFormat::args()),
                 clap::Arg::new("command")
                     .short('c')
                     .long("command")
@@ -188,7 +202,10 @@ impl ClapArgumentLoader {
                 stdout: match command.get_one::<String>("stdout") {
                     | Some(v) => {
                         match v.as_ref() {
+                            #[cfg(feature = "format+json")]
                             | "json" => Ok(Some(StdoutFormat::Json)),
+                            #[cfg(feature = "format+yaml")]
+                            | "yaml" => Ok(Some(StdoutFormat::Yaml)),
                             | _ => Err(anyhow!("unknown stdout format")),
                         }
                     },
