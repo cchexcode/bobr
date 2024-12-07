@@ -74,21 +74,21 @@ pub struct Multiplexer {
     program: Vec<String>,
     stderr: usize,
     stdout: Option<StdoutFormat>,
-    tasks: Arc<BTreeMap<usize, Arc<RwLock<Task>>>>,
+    tasks: Arc<BTreeMap<usize, RwLock<Task>>>,
 }
 
 impl Multiplexer {
     pub fn new(program: Vec<String>, stderr: usize, stdout: Option<StdoutFormat>, tasks: Vec<String>) -> Self {
-        let mut task_map = BTreeMap::<usize, Arc<RwLock<Task>>>::new();
+        let mut task_map = BTreeMap::<usize, RwLock<Task>>::new();
         for i in 0..tasks.len() {
             task_map.insert(
                 i,
-                Arc::new(RwLock::new(Task {
+                RwLock::new(Task {
                     command: tasks[i].clone(),
                     status: TaskStatus::Pending,
                     stderr: VecDeque::<_>::new(),
                     stdout: String::new(),
-                })),
+                }),
             );
         }
 
@@ -219,7 +219,7 @@ impl Multiplexer {
 struct TaskEventHandler {
     rx: Receiver<TaskEvent>,
     stderr: usize,
-    tasks: Arc<BTreeMap<usize, Arc<RwLock<Task>>>>,
+    tasks: Arc<BTreeMap<usize, RwLock<Task>>>,
 }
 
 impl TaskEventHandler {
@@ -257,7 +257,7 @@ impl TaskEventHandler {
         }
     }
 
-    fn draw(tasks: &BTreeMap<usize, Arc<RwLock<Task>>>, completed: bool) {
+    fn draw(tasks: &BTreeMap<usize, RwLock<Task>>, completed: bool) {
         let mut writer = BufWriter::new(stderr());
         if !completed {
             crossterm::queue!(writer, Clear(ClearType::All)).unwrap();
