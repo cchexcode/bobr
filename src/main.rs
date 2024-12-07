@@ -53,7 +53,9 @@ mod test {
     use crate::multiplexer::StdoutData;
 
     fn setup_test() -> CliTestSetup {
-        CliTestSetup::new()
+        let mut setup = CliTestSetup::new();
+        setup.with_env("RUST_BACKTRACE", "0");
+        setup
     }
 
     #[tokio::test]
@@ -78,6 +80,24 @@ mod test {
         assert_eq!("", result_typed.tasks.get(&0).unwrap().stdout);
         assert_eq!("", result_typed.tasks.get(&1).unwrap().stdout);
         assert_eq!("test\n", result_typed.tasks.get(&2).unwrap().stdout);
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    pub async fn test_cmd_exec_experimental_stdout() -> Result<()> {
+        let setup = setup_test();
+        // without experimental flag
+        let result = setup.run("--stdout=json")?;
+        assert!(!result.status.success()); // can not succeed
+
+        let stderr = result.stderr_str();
+        let stderr_last = stderr.lines().last().unwrap();
+        assert_eq!("Error: experimental flag (stdout)", stderr_last);
+
+        // with experimental flag
+        let result = setup.run("-e --stdout=json")?;
+        assert!(result.status.success()); // can not succeed
 
         Ok(())
     }

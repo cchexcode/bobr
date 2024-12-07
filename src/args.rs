@@ -25,7 +25,7 @@ impl CallArgs {
         match &self.command {
             | Command::Multiplex { stdout, .. } => {
                 match stdout {
-                    | Some(..) => Err(anyhow!("using stdout is experimental")),
+                    | Some(..) => Err(anyhow!("experimental flag (stdout)")),
                     | None => Ok(()),
                 }
             },
