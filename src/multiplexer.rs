@@ -25,24 +25,6 @@ use tokio::{
 
 use crate::args::StdoutFormat;
 
-#[derive(Debug, Eq, PartialEq)]
-enum TaskStatusCompleted {
-    Success,
-    Failed(Option<i32>),
-}
-
-#[derive(Debug, Eq, PartialEq)]
-enum TaskStatus {
-    Pending,
-    Running,
-    Completed(TaskStatusCompleted),
-}
-enum TaskEvent {
-    Update { id: usize, status: TaskStatus },
-    Stderr { id: usize, line: String },
-    Stdout { id: usize, content: String },
-}
-
 #[derive(serde::Serialize, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub(crate) struct StdoutData {
@@ -63,7 +45,26 @@ pub(crate) struct StdoutDataTask {
     pub stdout: String,
 }
 
-pub struct Task {
+#[derive(Debug, Eq, PartialEq)]
+enum TaskStatusCompleted {
+    Success,
+    Failed(Option<i32>),
+}
+
+#[derive(Debug, Eq, PartialEq)]
+enum TaskStatus {
+    Pending,
+    Running,
+    Completed(TaskStatusCompleted),
+}
+
+enum TaskEvent {
+    Update { id: usize, status: TaskStatus },
+    Stderr { id: usize, line: String },
+    Stdout { id: usize, content: String },
+}
+
+struct Task {
     command: String,
     status: TaskStatus,
     stderr: VecDeque<String>,
@@ -104,7 +105,7 @@ impl Multiplexer {
         let time_start = Utc::now();
         let (task_event_tx, task_event_rx) = flume::unbounded::<TaskEvent>();
 
-        let event_handler = TaskEventHandler {
+        let event_handler = TaskEventReporter {
             rx: task_event_rx,
             stderr: self.stderr,
             tasks: self.tasks.clone(),
@@ -216,13 +217,13 @@ impl Multiplexer {
     }
 }
 
-struct TaskEventHandler {
+struct TaskEventReporter {
     rx: Receiver<TaskEvent>,
     stderr: usize,
     tasks: Arc<BTreeMap<usize, RwLock<Task>>>,
 }
 
-impl TaskEventHandler {
+impl TaskEventReporter {
     pub async fn run(self) {
         let mut remaining = self.tasks.len();
         crossterm::execute!(std::io::stderr(), EnterAlternateScreen).unwrap();
