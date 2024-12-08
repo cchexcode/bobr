@@ -263,7 +263,7 @@ dependencies = [
 [[package]]
 name = "clitest"
 version = "0.0.0"
-source = "git+https://github.com/cchexcode/clitest_rs?branch=master#02c35d7020901a1dec764adf6a9a5ba88dcd93b9"
+source = "git+https://github.com/cchexcode/clitest_rs?rev=b540083fec4033abb4a25f422fa010b8c17dbaa2#b540083fec4033abb4a25f422fa010b8c17dbaa2"
 dependencies = [
  "anyhow",
 ]

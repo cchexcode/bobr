@@ -113,4 +113,19 @@ mod test {
 
         Ok(())
     }
+
+    #[tokio::test]
+    pub async fn test_feature_format_yaml() -> Result<()> {
+        // run without feature
+        let result = setup_test().run("-e --stdout=yaml")?;
+        assert!(!result.status.success()); // can not succeed
+
+        // run with format+yaml feature
+        let result = setup_test()
+            .with_cargo_flag("--features=\"format+yaml\"")
+            .run("-e --stdout=yaml")?;
+        assert!(result.status.success()); // must succeed
+
+        Ok(())
+    }
 }

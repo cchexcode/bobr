@@ -44,7 +44,6 @@ chrono = { version = "0.4.38", features = ["serde"] }
 serde_json = { version = "1.0.133", optional = true }
 serde_yml = { version = "0.0.12", optional = true }
 
-
 [dev-dependencies]
 hoox = "0.3.0"
-clitest = { git = "https://github.com/cchexcode/clitest_rs", branch = "master" }
+clitest = { git = "https://github.com/cchexcode/clitest_rs", rev = "b540083fec4033abb4a25f422fa010b8c17dbaa2" }
