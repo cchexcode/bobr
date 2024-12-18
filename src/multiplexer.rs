@@ -250,7 +250,7 @@ impl<'a> TaskEventReporter<'a> {
 
         for item in tasks.iter() {
             let task = item.1.read();
-            writeln!(writer, "⇒ ({}) {}", item.0, task.command).unwrap();
+            crossterm::queue!(writer, Print(format!("⇒ ({}) {}\n", item.0, task.command))).unwrap();
             let status = match &task.status {
                 | TaskStatus::Pending => "PENDING".to_owned().yellow(),
                 | TaskStatus::Running => "RUNNING".to_owned().yellow(),
@@ -267,24 +267,23 @@ impl<'a> TaskEventReporter<'a> {
                     }
                 },
             };
-            write!(writer, " ↳ Status: ").unwrap();
+            crossterm::queue!(writer, Print(" ↳ Status: ")).unwrap();
             crossterm::queue!(writer, Print(status)).unwrap();
-            writeln!(writer, "").unwrap();
+            crossterm::queue!(writer, Print("\n")).unwrap();
 
             if task.stderr.len() > 0 {
-                writeln!(writer, " ↳ Stderr:").unwrap();
+                crossterm::queue!(writer, Print(" ↳ Stderr: \n")).unwrap();
                 for line in &task.stderr {
-                    writeln!(writer, "   |> {}", line).unwrap();
+                    crossterm::queue!(writer, Print(format!("   |> {}\n", line))).unwrap();
                 }
             }
         }
 
-        writeln!(writer, "").unwrap(); // new line
-        write!(writer, "Thinking...").unwrap();
+        crossterm::queue!(writer, Print("\n")).unwrap();
+        crossterm::queue!(writer, Print("Thinking...")).unwrap();
         if completed {
-            write!(writer, " DONE").unwrap();
+            crossterm::queue!(writer, Print(" DONE\n")).unwrap();
         }
-        writeln!(writer, "").unwrap();
         writer.flush().unwrap();
     }
 }
