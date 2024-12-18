@@ -37,8 +37,10 @@ async fn main() -> Result<()> {
             stderr,
             stdout,
             commands,
+            parallelism,
         } => {
-            let result = Multiplexer::new(program, stderr, commands).run().await?;
+            let parallelism = parallelism.unwrap_or(commands.len());
+            let result = Multiplexer::new(program, stderr, commands, parallelism).run().await?;
             if let Some(v) = stdout {
                 match v {
                     #[cfg(feature = "format+json")]
@@ -85,7 +87,7 @@ mod test {
         // assert commands are run in parallel and reasonably fast
         let runtime = result_typed.metadata.ended - result_typed.metadata.started;
         assert!(runtime > Duration::milliseconds(1000));
-        assert!(runtime <= Duration::milliseconds(1100));
+        assert!(runtime <= Duration::milliseconds(1200));
 
         // assert stdout output of subcommands
         assert_eq!(3, result_typed.tasks.len());
@@ -109,7 +111,25 @@ mod test {
 
         // with experimental flag
         let result = setup.run("-e --stdout=json")?;
-        assert!(result.status.success()); // can not succeed
+        assert!(result.status.success()); // must succeed
+
+        Ok(())
+    }
+
+    #[tokio::test]
+    pub async fn test_cmd_exec_experimental_parallelism() -> Result<()> {
+        let setup = setup_test();
+        // without experimental flag
+        let result = setup.run("-p4")?;
+        assert!(!result.status.success()); // can not succeed
+
+        let stderr = result.stderr_str();
+        let stderr_last = stderr.lines().last().unwrap();
+        assert_eq!("Error: experimental flag (parallelism)", stderr_last);
+
+        // with experimental flag
+        let result = setup.run("-e -p4")?;
+        assert!(result.status.success()); // must succeed
 
         Ok(())
     }

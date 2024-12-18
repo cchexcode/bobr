@@ -23,14 +23,21 @@ impl CallArgs {
         }
 
         match &self.command {
-            | Command::Multiplex { stdout, .. } => {
+            | Command::Multiplex {
+                stdout, parallelism, ..
+            } => {
                 match stdout {
                     | Some(..) => Err(anyhow!("experimental flag (stdout)")),
                     | None => Ok(()),
-                }
+                }?;
+
+                match parallelism {
+                    | Some(..) => Err(anyhow!("experimental flag (parallelism)")),
+                    | None => Ok(()),
+                }?;
             },
-            | _ => Ok(()),
-        }?;
+            | _ => {},
+        };
 
         Ok(())
     }
@@ -77,6 +84,7 @@ pub(crate) enum Command {
         stdout: Option<StdoutFormat>,
         stderr: usize,
         commands: Vec<String>,
+        parallelism: Option<usize>,
     },
 }
 
@@ -97,7 +105,6 @@ impl ClapArgumentLoader {
                     .help("Enables experimental features.")
                     .num_args(0),
                 clap::Arg::new("program")
-                    .short('p')
                     .long("program")
                     .help("Defines the program used to execute the commands given.")
                     .default_value("/bin/sh -c"),
@@ -112,6 +119,10 @@ impl ClapArgumentLoader {
                          to stdout.",
                     )
                     .value_parser(StdoutFormat::args()),
+                clap::Arg::new("parallelism")
+                    .long("parallelism")
+                    .short('p')
+                    .help("Set the maximum amount of (sub) processes that run in parallel."),
                 clap::Arg::new("command")
                     .short('c')
                     .long("command")
@@ -189,6 +200,7 @@ impl ClapArgumentLoader {
                     commands.append(lines);
                 }
             }
+
             let program = command
                 .get_one::<String>("program")
                 .unwrap()
@@ -212,6 +224,10 @@ impl ClapArgumentLoader {
                     | None => Ok(None),
                 }?,
                 commands,
+                parallelism: match command.get_one::<String>("parallelism") {
+                    | Some(v) => Some(v.parse::<usize>().unwrap()),
+                    | None => None,
+                },
             }
         };
 

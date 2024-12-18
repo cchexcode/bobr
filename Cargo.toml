@@ -25,6 +25,7 @@ tokio = { version = "1.42.0", features = [
     "process",
     "io-util",
     "time",
+    "sync",
 ] }
 clap = "4.5.23"
 clap_complete = "4.5.38"

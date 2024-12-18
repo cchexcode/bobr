@@ -1,6 +1,7 @@
 use std::{
     collections::{BTreeMap, VecDeque},
     io::{stderr, BufWriter, Write},
+    sync::Arc,
 };
 
 use anyhow::Result;
@@ -19,6 +20,7 @@ use signal_hook::{
 use tokio::{
     io::{AsyncBufReadExt, AsyncReadExt, BufReader},
     process::Command,
+    sync::Semaphore,
     task::JoinSet,
 };
 
@@ -72,10 +74,11 @@ pub struct Multiplexer {
     program: Vec<String>,
     stderr: usize,
     tasks: BTreeMap<usize, RwLock<Task>>,
+    parallelism: usize,
 }
 
 impl Multiplexer {
-    pub fn new(program: Vec<String>, stderr: usize, tasks: Vec<String>) -> Self {
+    pub fn new(program: Vec<String>, stderr: usize, tasks: Vec<String>, processes: usize) -> Self {
         let mut task_map = BTreeMap::<usize, RwLock<Task>>::new();
         for i in 0..tasks.len() {
             task_map.insert(
@@ -93,6 +96,7 @@ impl Multiplexer {
             program,
             stderr,
             tasks: task_map,
+            parallelism: processes,
         }
     }
 
@@ -101,6 +105,7 @@ impl Multiplexer {
         let (task_event_tx, task_event_rx) = flume::unbounded::<TaskEvent>();
 
         let mut joins = JoinSet::new();
+        let budget = Arc::new(Semaphore::new(self.parallelism));
         for command in self.tasks.iter() {
             let report_channel = task_event_tx.clone();
             // first item is shell to execute commands in (like "/bin/sh")
@@ -118,7 +123,9 @@ impl Multiplexer {
 
             // spawn child process as member of JoinSet
             let task_id = command.0.clone();
+            let task_budget = budget.clone();
             joins.spawn(async move {
+                let _seq_lock = task_budget.acquire().await;
                 let mut child_proc = cmd_proc.spawn().unwrap();
                 // ignore error
                 let _ = report_channel.send(TaskEvent::Update {
