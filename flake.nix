@@ -29,9 +29,6 @@
             # rust
             rust-bin.stable."${versions.rust}".default
             rust-analyzer
-            # tools
-            helix
-            gitui
 
             # rust packages / programs
             (rust.buildRustPackage rec {
@@ -57,8 +54,6 @@
             printf "$(rustc --version)\n"
             printf "$(cargo --version)\n"
             printf "$(rustfmt --version)\n"
-            printf "$(hx --version)\n"
-            printf "$(gitui --version)\n"
             printf "\n"
           '';
         };
