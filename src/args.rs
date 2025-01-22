@@ -237,12 +237,14 @@ impl ClapArgumentLoader {
                 program,
                 stderr: command.get_one::<String>("stderr").unwrap().parse::<usize>()?,
                 stdout: match command.get_one::<String>("stdout") {
-                    | Some(v) => match v.as_ref() {
-                        #[cfg(feature = "format+json")]
-                        | "json" => Ok(Some(StdoutFormat::Json)),
-                        #[cfg(feature = "format+yaml")]
-                        | "yaml" => Ok(Some(StdoutFormat::Yaml)),
-                        | _ => Err(anyhow!("unknown stdout format")),
+                    | Some(v) => {
+                        match v.as_ref() {
+                            #[cfg(feature = "format+json")]
+                            | "json" => Ok(Some(StdoutFormat::Json)),
+                            #[cfg(feature = "format+yaml")]
+                            | "yaml" => Ok(Some(StdoutFormat::Yaml)),
+                            | _ => Err(anyhow!("unknown stdout format")),
+                        }
                     },
                     | None => Ok(None),
                 }?,
