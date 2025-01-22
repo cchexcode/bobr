@@ -1,8 +1,10 @@
-use std::{io::Read, str::FromStr};
+use std::{collections::HashMap, io::Read, str::FromStr};
 
 use anyhow::{anyhow, Result};
 use clap::ArgAction;
 use itertools::Itertools;
+
+use crate::config::Config;
 
 #[derive(Debug, Eq, PartialEq)]
 pub(crate) enum Privilege {
@@ -196,8 +198,31 @@ impl ClapArgumentLoader {
                 for file in files {
                     let mut content = String::new();
                     std::fs::File::open(file)?.read_to_string(&mut content)?;
-                    let lines = &mut content.lines().map(|v| v.to_owned()).collect::<Vec<_>>();
-                    commands.append(lines);
+
+                    let mut filters = HashMap::<&str, Box<dyn Fn(&str) -> Result<Config>>>::new();
+                    #[cfg(feature = "format+yaml")]
+                    {
+                        // meh...
+                        filters.insert(".yml", Box::new(move |v| Ok(serde_yml::from_str::<Config>(&v)?)));
+                        filters.insert(".yaml", Box::new(move |v| Ok(serde_yml::from_str::<Config>(&v)?)));
+                    }
+                    #[cfg(feature = "format+json")]
+                    filters.insert(".json", Box::new(move |v| Ok(serde_json::from_str::<Config>(&v)?)));
+                    #[cfg(feature = "format+toml")]
+                    filters.insert(".toml", Box::new(move |v| Ok(toml::from_str::<Config>(&v)?)));
+
+                    let mut config = Option::<Config>::None;
+                    for (format, parser) in filters.iter() {
+                        if file.ends_with(format) {
+                            config = Some(parser(&content)?);
+                            break;
+                        }
+                    }
+                    // add error handling
+                    let config = config.unwrap();
+
+                    let mut cmds = config.commands.into_iter().map(|v| v.command).collect::<Vec<_>>();
+                    commands.append(&mut cmds);
                 }
             }
 
@@ -212,14 +237,12 @@ impl ClapArgumentLoader {
                 program,
                 stderr: command.get_one::<String>("stderr").unwrap().parse::<usize>()?,
                 stdout: match command.get_one::<String>("stdout") {
-                    | Some(v) => {
-                        match v.as_ref() {
-                            #[cfg(feature = "format+json")]
-                            | "json" => Ok(Some(StdoutFormat::Json)),
-                            #[cfg(feature = "format+yaml")]
-                            | "yaml" => Ok(Some(StdoutFormat::Yaml)),
-                            | _ => Err(anyhow!("unknown stdout format")),
-                        }
+                    | Some(v) => match v.as_ref() {
+                        #[cfg(feature = "format+json")]
+                        | "json" => Ok(Some(StdoutFormat::Json)),
+                        #[cfg(feature = "format+yaml")]
+                        | "yaml" => Ok(Some(StdoutFormat::Yaml)),
+                        | _ => Err(anyhow!("unknown stdout format")),
                     },
                     | None => Ok(None),
                 }?,

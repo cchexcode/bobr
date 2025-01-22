@@ -257,7 +257,7 @@ impl<'a> TaskEventReporter<'a> {
 
         for item in tasks.iter() {
             let task = item.1.read();
-            crossterm::queue!(writer, Print(format!("⇒ ({}) {}\n", item.0, task.command))).unwrap();
+            crossterm::queue!(writer, Print(format!("⇒ ({}) {}\n", item.0, task.command.trim()))).unwrap();
             let status = match &task.status {
                 | TaskStatus::Pending => "PENDING".to_owned().yellow(),
                 | TaskStatus::Running => "RUNNING".to_owned().yellow(),

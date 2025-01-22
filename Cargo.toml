@@ -15,6 +15,7 @@ readme = "docs/README.md"
 default = ["format+json"]
 "format+json" = ["serde_json"]
 "format+yaml" = ["serde_yml"]
+"format+toml" = ["toml"]
 
 [dependencies]
 async-trait = "0.1.83"
@@ -44,6 +45,7 @@ chrono = { version = "0.4.38", features = ["serde"] }
 
 serde_json = { version = "1.0.133", optional = true }
 serde_yml = { version = "0.0.12", optional = true }
+toml = { version = "0.8.19", optional = true }
 
 [dev-dependencies]
 hoox = "0.3.0"

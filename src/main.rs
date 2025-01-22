@@ -5,6 +5,7 @@ use args::{ManualFormat, StdoutFormat};
 use multiplexer::Multiplexer;
 
 pub mod args;
+pub mod config;
 pub mod multiplexer;
 pub mod reference;
 
@@ -74,9 +75,11 @@ mod test {
 
     #[tokio::test]
     pub async fn test_smoke() -> Result<()> {
-        let setup = setup_test();
+        let mut setup = setup_test();
+        setup.with_cargo_flag("--features=\"format+toml\"");
+
         // run CLI with experimental flag, test file and stdout output (json formatted)
-        let result = setup.run("-e -f ./test/example.sh --stdout=json")?;
+        let result = setup.run("-e -f ./test/example.toml --stdout=json")?;
 
         // assert program ran and completed successfully
         assert!(result.status.success());

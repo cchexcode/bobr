@@ -1,0 +1,14 @@
+[[commands]]
+command = '''
+sleep 1 && exit 1
+'''
+
+[[commands]]
+command = '''
+sleep 1
+'''
+
+[[commands]]
+command = '''
+echo "test"
+'''
