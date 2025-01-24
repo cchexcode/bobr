@@ -9,6 +9,7 @@ pub mod config;
 pub mod multiplexer;
 pub mod reference;
 
+#[deny(unsafe_code)]
 #[tokio::main]
 async fn main() -> Result<()> {
     let cmd = crate::args::ClapArgumentLoader::load()?;
