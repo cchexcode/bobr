@@ -11,6 +11,14 @@ keywords = ["bobr", "cli"]
 categories = ["command-line-utilities"]
 readme = "docs/README.md"
 
+[[bin]]
+name = "bobr"
+path = "src/main.rs"
+
+[lib]
+name = "bobr"
+path = "src/lib.rs"
+
 [features]
 default = ["format+json"]
 "format+json" = ["serde_json"]
